@@ -3,133 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>หมากรุกออนไลน์ - Full Screen</title>
+    <title>Chess Pro Online</title>
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
-    
     <style>
-        :root {
-            --bg-color: #0f172a;
-            --panel-bg: #1e293b;
-            --accent: #38bdf8;
-            --danger: #ef4444;
-        }
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
-            color: white;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-        }
+        :root { --bg: #0f172a; --panel: #1e293b; --accent: #38bdf8; --white: #f8fafc; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--white); margin: 0; display: flex; flex-direction: column; align-items: center; }
+        #board-container { width: 95vw; max-width: 500px; margin-top: 10px; }
+        .panel { background: var(--panel); padding: 20px; border-radius: 12px; width: 85%; max-width: 400px; text-align: center; margin-top: 20px; }
+        input { width: 80%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none; font-size: 16px; }
+        button { padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; margin: 5px; }
+        .btn-main { background: var(--accent); color: var(--bg); width: 100%; }
+        .btn-white { background: #eee; color: #333; }
+        .btn-black { background: #333; color: #eee; }
+        .btn-reset { background: #ef4444; color: white; width: 100%; }
         
-        /* ขยายขนาดกระดานให้ใหญ่ขึ้น */
-        #board-container {
-            width: 95vw; /* กว้าง 95% ของหน้าจอ */
-            max-width: 600px; /* ไม่เกิน 600px เพื่อความสวยงามบนแท็บเล็ต */
-            margin: 10px auto;
-        }
+        /* Highlight Square */
+        .highlight-white { box-shadow: inset 0 0 3px 3px yellow; }
+        .highlight-black { box-shadow: inset 0 0 3px 3px blue; }
+        .highlight-hint { background: rgba(0, 255, 0, 0.3); border-radius: 50%; width: 20px; height: 20px; margin: 25% auto; }
 
-        #board {
-            width: 100%;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            border: 4px solid #334155;
-            border-radius: 8px;
-        }
-
-        .header { padding: 15px; text-align: center; }
-        .header h2 { margin: 0; color: var(--accent); font-size: 24px; }
-
-        .panel {
-            background: var(--panel-bg);
-            padding: 20px;
-            border-radius: 15px;
-            width: 85%;
-            max-width: 400px;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-        }
-
-        input {
-            width: 90%;
-            padding: 12px;
-            margin: 15px 0;
-            border-radius: 8px;
-            border: 1px solid #475569;
-            background: #0f172a;
-            color: white;
-            font-size: 18px;
-            text-align: center;
-        }
-
-        button {
-            width: 95%;
-            padding: 14px;
-            background: var(--accent);
-            color: #0f172a;
-            border: none;
-            border-radius: 8px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        #status-bar {
-            width: 90%;
-            max-width: 500px;
-            margin: 15px 0;
-            padding: 10px;
-            background: #334155;
-            border-radius: 8px;
-            text-align: center;
-            font-size: 18px;
-            color: #fbbf24;
-        }
-
+        #status-bar { margin: 10px; padding: 10px; background: #334155; border-radius: 8px; font-weight: bold; color: #fbbf24; }
         .hidden { display: none; }
-        .controls { width: 95%; max-width: 600px; display: flex; gap: 10px; justify-content: center; }
-        .btn-reset { background: var(--danger); color: white; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h2>♟️ CHESS ONLINE</h2>
-    </div>
+    <h2 style="color: var(--accent);">♟️ CHESS PRO ONLINE</h2>
 
     <div id="lobby" class="panel">
-        <p>สร้างหรือจอยห้องเพื่อเล่นกับเพื่อน</p>
-        <input type="text" id="room-id" placeholder="ใส่ชื่อห้อง เช่น king123">
-        <button onclick="joinRoom()">เริ่มเล่นเลย!</button>
+        <input type="text" id="room-id" placeholder="ชื่อห้อง...">
+        <button class="btn-main" onclick="joinRoom()">เข้าห้อง</button>
+    </div>
+
+    <div id="side-selector" class="panel hidden">
+        <h3>เลือกฝั่งที่จะเล่น</h3>
+        <p id="room-display"></p>
+        <button id="btn-w" class="btn-white" onclick="selectSide('w')">เล่นสีขาว (White)</button>
+        <button id="btn-b" class="btn-black" onclick="selectSide('b')">เล่นสีดำ (Black)</button>
     </div>
 
     <div id="game-area" class="hidden">
-        <div style="margin-bottom: 5px; font-size: 14px; color: #94a3b8;">
-            ห้อง: <span id="display-room" style="color:white; font-weight:bold;"></span>
-        </div>
-        
+        <div id="status-bar">รอการเลือกฝั่ง...</div>
         <div id="board-container">
             <div id="board"></div>
         </div>
-
-        <div id="status-bar">สถานะ: รอการเคลื่อนไหว...</div>
-
-        <div class="controls">
-            <button class="btn-reset" onclick="resetGame()">เริ่มใหม่ (Reset)</button>
+        <div class="panel" style="margin-top: 10px;">
+            <p id="player-info"></p>
+            <button id="reset-btn" class="btn-reset" onclick="requestReset()">เริ่มเกมใหม่ (ต้องกดยืนยันทั้งคู่)</button>
         </div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
-    
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // ใช้ข้อมูล Firebase ที่คุณให้มา
         const firebaseConfig = {
             apiKey: "AIzaSyCI7Q5_9eLBuygo3iaYCl6DVUzK5emnPQ4",
             authDomain: "chessss-9dbbe.firebaseapp.com",
@@ -137,71 +67,110 @@
             storageBucket: "chessss-9dbbe.firebasestorage.app",
             messagingSenderId: "580244581384",
             appId: "1:580244581384:web:e92e42d2bea362eb15b5bd",
-            databaseURL: "https://chessss-9dbbe-default-rtdb.firebaseio.com" // ผมเดา URL นี้ให้ตาม Project ID
+            databaseURL: "https://chessss-9dbbe-default-rtdb.firebaseio.com"
         };
 
-        // เริ่มต้น Firebase
         firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+        const db = firebase.database();
 
         let board = null;
         let game = new Chess();
+        let mySide = null; // 'w' หรือ 'b'
         let currentRoom = "";
+        let selectedSquare = null;
 
         function joinRoom() {
-            let roomInput = document.getElementById("room-id").value.trim();
-            if (!roomInput) return alert("กรุณาตั้งชื่อห้อง");
-
-            currentRoom = roomInput;
-            document.getElementById("lobby").classList.add("hidden");
-            document.getElementById("game-area").classList.remove("hidden");
-            document.getElementById("display-room").innerText = currentRoom;
-
-            initBoard();
-            listenToRoom();
+            currentRoom = $('#room-id').val().trim();
+            if (!currentRoom) return alert("กรุณาใส่ชื่อห้อง");
+            $('#lobby').addClass('hidden');
+            $('#side-selector').removeClass('hidden');
+            $('#room-display').text("ห้อง: " + currentRoom);
+            listenToSides();
         }
 
-        function initBoard() {
-            let config = {
-                draggable: true,
+        // ฟังว่าสีไหนถูกเลือกไปแล้วบ้าง
+        function listenToSides() {
+            db.ref('rooms/' + currentRoom + '/players').on('value', (snap) => {
+                const p = snap.val() || {};
+                if (p.w) $('#btn-w').attr('disabled', true).text('สีขาว (มีคนเล่นแล้ว)');
+                if (p.b) $('#btn-b').attr('disabled', true).text('สีดำ (มีคนเล่นแล้ว)');
+            });
+        }
+
+        function selectSide(side) {
+            mySide = side;
+            db.ref('rooms/' + currentRoom + '/players/' + side).set(true);
+            $('#side-selector').addClass('hidden');
+            $('#game-area').removeClass('hidden');
+            $('#player-info').text("คุณเล่นฝั่ง: " + (side === 'w' ? 'สีขาว' : 'สีดำ'));
+            initGame();
+        }
+
+        function initGame() {
+            const config = {
                 position: 'start',
-                onDragStart: (source, piece) => {
-                    if (game.game_over()) return false;
-                    if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
-                        (game.turn() === 'b' && piece.search(/^w/) !== -1)) return false;
-                },
-                onDrop: (source, target) => {
-                    let move = game.move({ from: source, to: target, promotion: 'q' });
-                    if (move === null) return 'snapback';
-                    
-                    updateStatus();
-                    // บันทึกตำแหน่งลง Firebase
-                    database.ref('rooms/' + currentRoom).set({ fen: game.fen() });
-                },
-                onSnapEnd: () => { board.position(game.fen()); },
+                orientation: mySide === 'w' ? 'white' : 'black',
                 pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
             };
             board = Chessboard('board', config);
-            // ปรับขนาดกระดานอัตโนมัติเมื่อหน้าจอเปลี่ยนขนาด
-            $(window).resize(board.resize);
+            
+            // คลิกเดิน
+            $('#board').on('click', '.square-55d63', function() {
+                const square = $(this).attr('data-square');
+                handleSquareClick(square);
+            });
+
+            listenToMoves();
+            listenToReset();
         }
 
-        function updateStatus() {
-            let status = '';
-            let moveColor = (game.turn() === 'w') ? 'สีขาว' : 'สีดำ';
+        function handleSquareClick(square) {
+            // เช็คว่าเป็นตาเราไหม
+            if (game.turn() !== mySide) return;
 
-            if (game.in_checkmate()) status = 'รุกฆาต! ' + moveColor + ' แพ้';
-            else if (game.in_draw()) status = 'เสมอ!';
-            else {
-                status = 'ตาเดิน: ' + moveColor;
-                if (game.in_check()) status += ' (เช็ค!)';
+            // ถ้าเลือกช่องเดิม ให้ยกเลิกไฮไลท์
+            if (selectedSquare === square) {
+                removeHighlights();
+                selectedSquare = null;
+                return;
             }
-            document.getElementById("status-bar").innerText = status;
+
+            // พยายามเดินหมาก
+            const move = game.move({ from: selectedSquare, to: square, promotion: 'q' });
+
+            if (move) {
+                // เดินสำเร็จ
+                board.position(game.fen());
+                db.ref('rooms/' + currentRoom + '/game').set({ fen: game.fen(), lastMove: {from: selectedSquare, to: square} });
+                selectedSquare = null;
+                removeHighlights();
+            } else {
+                // ถ้าเดินไม่ได้ (อาจจะเป็นการเลือกหมากใหม่)
+                const piece = game.get(square);
+                if (piece && piece.color === mySide) {
+                    selectedSquare = square;
+                    showHighlights(square);
+                }
+            }
         }
 
-        function listenToRoom() {
-            database.ref('rooms/' + currentRoom).on('value', (snapshot) => {
-                const data = snapshot.val();
+        function showHighlights(square) {
+            removeHighlights();
+            $(`.square-${square}`).addClass('highlight-white');
+            const moves = game.moves({ square: square, verbose: true });
+            moves.forEach(m => {
+                $(`.square-${m.to}`).append('<div class="highlight-hint"></div>');
+            });
+        }
+
+        function removeHighlights() {
+            $('.square-55d63').removeClass('highlight-white');
+            $('.highlight-hint').remove();
+        }
+
+        function listenToMoves() {
+            db.ref('rooms/' + currentRoom + '/game').on('value', (snap) => {
+                const data = snap.val();
                 if (data && data.fen) {
                     game.load(data.fen);
                     board.position(data.fen);
@@ -210,13 +179,31 @@
             });
         }
 
-        function resetGame() {
-            if(confirm("คุณต้องการเริ่มเกมใหม่ใช่ไหม?")) {
-                game.reset();
-                board.start();
-                updateStatus();
-                database.ref('rooms/' + currentRoom).set({ fen: game.fen() });
-            }
+        function updateStatus() {
+            let status = game.turn() === 'w' ? 'ตาของ: สีขาว' : 'ตาของ: สีดำ';
+            if (game.in_checkmate()) status = 'รุกฆาต! เกมจบ';
+            else if (game.in_check()) status += ' (โดนรุก!)';
+            $('#status-bar').text(status);
+        }
+
+        // ระบบรีเซ็ตยืนยันคู่
+        function requestReset() {
+            db.ref('rooms/' + currentRoom + '/reset/' + mySide).set(true);
+            alert("ส่งคำขอรีเซ็ตแล้ว รออีกฝ่ายยืนยัน...");
+        }
+
+        function listenToReset() {
+            db.ref('rooms/' + currentRoom + '/reset').on('value', (snap) => {
+                const r = snap.val() || {};
+                if (r.w && r.b) {
+                    // ทั้งคู่กดยืนยัน
+                    game.reset();
+                    board.start();
+                    db.ref('rooms/' + currentRoom + '/game').set({ fen: game.fen() });
+                    db.ref('rooms/' + currentRoom + '/reset').remove();
+                    alert("เริ่มเกมใหม่!");
+                }
+            });
         }
     </script>
 </body>
