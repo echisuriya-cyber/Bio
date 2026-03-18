@@ -1,248 +1,223 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>หมากรุกออนไลน์ - Full Screen</title>
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --accent: #38bdf8;
+            --danger: #ef4444;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        /* ขยายขนาดกระดานให้ใหญ่ขึ้น */
+        #board-container {
+            width: 95vw; /* กว้าง 95% ของหน้าจอ */
+            max-width: 600px; /* ไม่เกิน 600px เพื่อความสวยงามบนแท็บเล็ต */
+            margin: 10px auto;
+        }
 
-<meta name="viewport" content="width=device-width, initial-scale=1">
+        #board {
+            width: 100%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 4px solid #334155;
+            border-radius: 8px;
+        }
 
-<link rel="stylesheet"
-href="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+        .header { padding: 15px; text-align: center; }
+        .header h2 { margin: 0; color: var(--accent); font-size: 24px; }
 
-<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-<script src="https://unpkg.com/chess.js@0.10.3/chess.js"></script>
-<script src="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+        .panel {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 15px;
+            width: 85%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
 
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+        input {
+            width: 90%;
+            padding: 12px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            background: #0f172a;
+            color: white;
+            font-size: 18px;
+            text-align: center;
+        }
 
-<style>
+        button {
+            width: 95%;
+            padding: 14px;
+            background: var(--accent);
+            color: #0f172a;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
 
-body{
-background:#1e1e1e;
-color:white;
-font-family:sans-serif;
-text-align:center;
-}
+        #status-bar {
+            width: 90%;
+            max-width: 500px;
+            margin: 15px 0;
+            padding: 10px;
+            background: #334155;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 18px;
+            color: #fbbf24;
+        }
 
-#myId{
-position:fixed;
-top:10px;
-right:10px;
-background:#333;
-padding:10px;
-border-radius:10px;
-}
-
-#board{
-width:350px;
-margin:auto;
-margin-top:20px;
-}
-
-button{
-padding:10px;
-margin:5px;
-}
-
-input{
-padding:10px;
-}
-
-#challengeBox{
-display:none;
-background:#333;
-padding:15px;
-border-radius:10px;
-margin-top:10px;
-}
-
-</style>
-
+        .hidden { display: none; }
+        .controls { width: 95%; max-width: 600px; display: flex; gap: 10px; justify-content: center; }
+        .btn-reset { background: var(--danger); color: white; margin-top: 10px; }
+    </style>
 </head>
-
 <body>
 
-<div id="myId">ID: ...</div>
-
-<h2>Chess Duel</h2>
-
-<div id="menu">
-
-<input id="enemyId" placeholder="ใส่รหัสคู่ต่อสู้">
-
-<button onclick="sendChallenge()">ท้าดวล</button>
-
-</div>
-
-<div id="challengeBox">
-<h3 id="challengeText"></h3>
-<button onclick="acceptChallenge()">ยอมรับ</button>
-</div>
-
-<div id="board"></div>
-
-<script>
-
-// Firebase config ของคุณ
-var firebaseConfig = {
-
-apiKey: "AIzaSyA2RkFMgSHcyPj7v8dgUJsKhXwQB8rG7FU",
-authDomain: "chess-f4404.firebaseapp.com",
-databaseURL: "https://chess-f4404-default-rtdb.firebaseio.com/",
-projectId: "chess-f4404",
-storageBucket: "chess-f4404.firebasestorage.app",
-messagingSenderId: "957429600486",
-appId: "1:957429600486:web:fbfc378e55667dcfd9eb27"
-
-};
-
-firebase.initializeApp(firebaseConfig);
-
-var db = firebase.database()
-
-var board
-var game = new Chess()
-
-var myId = generateId()
-var enemyId = ""
-var room=""
-
-document.getElementById("myId").innerText="ID: "+myId
-
-listenChallenge()
-
-function generateId(){
-
-const chars="ABCDEFGH123456789"
-let id=""
-
-for(let i=0;i<6;i++){
-
-id+=chars[Math.floor(Math.random()*chars.length)]
-
-}
-
-return id
-
-}
-
-function sendChallenge(){
-
-enemyId=document.getElementById("enemyId").value
-
-if(enemyId==""){
-alert("ใส่รหัสก่อน")
-return
-}
-
-db.ref("challenge/"+enemyId).set({
-
-from:myId
-
-})
-
-alert("ส่งคำท้าแล้ว")
-
-}
-
-function listenChallenge(){
-
-db.ref("challenge/"+myId).on("value",function(snapshot){
-
-var data=snapshot.val()
-
-if(data){
-
-enemyId=data.from
-
-document.getElementById("challengeBox").style.display="block"
-
-document.getElementById("challengeText").innerText=
-enemyId+" ท้าคุณเล่นหมากรุก"
-
-}
-
-})
-
-}
-
-function acceptChallenge(){
-
-db.ref("challenge/"+myId).remove()
-
-startGame()
-
-}
-
-function startGame(){
-
-document.getElementById("menu").style.display="none"
-document.getElementById("challengeBox").style.display="none"
-
-createRoom()
-
-}
-
-function createRoom(){
-
-room=myId+enemyId
-
-db.ref("rooms/"+room).set({
-
-fen:game.fen()
-
-})
-
-listenRoom()
-
-}
-
-function listenRoom(){
-
-db.ref("rooms/"+room).on("value",function(snapshot){
-
-var data=snapshot.val()
-
-if(data){
-
-game.load(data.fen)
-
-board.position(data.fen)
-
-}
-
-})
-
-}
-
-function onDrop(source,target){
-
-var move=game.move({
-
-from:source,
-to:target,
-promotion:'q'
-
-})
-
-if(move===null) return 'snapback'
-
-db.ref("rooms/"+room).update({
-
-fen:game.fen()
-
-})
-
-}
-
-board = Chessboard("board",{
-
-draggable:true,
-position:'start',
-onDrop:onDrop
-
-})
-
-</script>
-
+    <div class="header">
+        <h2>♟️ CHESS ONLINE</h2>
+    </div>
+
+    <div id="lobby" class="panel">
+        <p>สร้างหรือจอยห้องเพื่อเล่นกับเพื่อน</p>
+        <input type="text" id="room-id" placeholder="ใส่ชื่อห้อง เช่น king123">
+        <button onclick="joinRoom()">เริ่มเล่นเลย!</button>
+    </div>
+
+    <div id="game-area" class="hidden">
+        <div style="margin-bottom: 5px; font-size: 14px; color: #94a3b8;">
+            ห้อง: <span id="display-room" style="color:white; font-weight:bold;"></span>
+        </div>
+        
+        <div id="board-container">
+            <div id="board"></div>
+        </div>
+
+        <div id="status-bar">สถานะ: รอการเคลื่อนไหว...</div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="resetGame()">เริ่มใหม่ (Reset)</button>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        // ใช้ข้อมูล Firebase ที่คุณให้มา
+        const firebaseConfig = {
+            apiKey: "AIzaSyCI7Q5_9eLBuygo3iaYCl6DVUzK5emnPQ4",
+            authDomain: "chessss-9dbbe.firebaseapp.com",
+            projectId: "chessss-9dbbe",
+            storageBucket: "chessss-9dbbe.firebasestorage.app",
+            messagingSenderId: "580244581384",
+            appId: "1:580244581384:web:e92e42d2bea362eb15b5bd",
+            databaseURL: "https://chessss-9dbbe-default-rtdb.firebaseio.com" // ผมเดา URL นี้ให้ตาม Project ID
+        };
+
+        // เริ่มต้น Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        let board = null;
+        let game = new Chess();
+        let currentRoom = "";
+
+        function joinRoom() {
+            let roomInput = document.getElementById("room-id").value.trim();
+            if (!roomInput) return alert("กรุณาตั้งชื่อห้อง");
+
+            currentRoom = roomInput;
+            document.getElementById("lobby").classList.add("hidden");
+            document.getElementById("game-area").classList.remove("hidden");
+            document.getElementById("display-room").innerText = currentRoom;
+
+            initBoard();
+            listenToRoom();
+        }
+
+        function initBoard() {
+            let config = {
+                draggable: true,
+                position: 'start',
+                onDragStart: (source, piece) => {
+                    if (game.game_over()) return false;
+                    if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
+                        (game.turn() === 'b' && piece.search(/^w/) !== -1)) return false;
+                },
+                onDrop: (source, target) => {
+                    let move = game.move({ from: source, to: target, promotion: 'q' });
+                    if (move === null) return 'snapback';
+                    
+                    updateStatus();
+                    // บันทึกตำแหน่งลง Firebase
+                    database.ref('rooms/' + currentRoom).set({ fen: game.fen() });
+                },
+                onSnapEnd: () => { board.position(game.fen()); },
+                pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
+            };
+            board = Chessboard('board', config);
+            // ปรับขนาดกระดานอัตโนมัติเมื่อหน้าจอเปลี่ยนขนาด
+            $(window).resize(board.resize);
+        }
+
+        function updateStatus() {
+            let status = '';
+            let moveColor = (game.turn() === 'w') ? 'สีขาว' : 'สีดำ';
+
+            if (game.in_checkmate()) status = 'รุกฆาต! ' + moveColor + ' แพ้';
+            else if (game.in_draw()) status = 'เสมอ!';
+            else {
+                status = 'ตาเดิน: ' + moveColor;
+                if (game.in_check()) status += ' (เช็ค!)';
+            }
+            document.getElementById("status-bar").innerText = status;
+        }
+
+        function listenToRoom() {
+            database.ref('rooms/' + currentRoom).on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data && data.fen) {
+                    game.load(data.fen);
+                    board.position(data.fen);
+                    updateStatus();
+                }
+            });
+        }
+
+        function resetGame() {
+            if(confirm("คุณต้องการเริ่มเกมใหม่ใช่ไหม?")) {
+                game.reset();
+                board.start();
+                updateStatus();
+                database.ref('rooms/' + currentRoom).set({ fen: game.fen() });
+            }
+        }
+    </script>
 </body>
 </html>
