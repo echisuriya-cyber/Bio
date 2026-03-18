@@ -3,70 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Chess Pro Online + Secret Bot</title>
+    <title>Chess Ultra Pro (Stockfish)</title>
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     <style>
         :root { --bg: #0f172a; --panel: #1e293b; --accent: #38bdf8; --white: #f8fafc; }
         body { font-family: sans-serif; background: var(--bg); color: var(--white); margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        #board-container { width: 95vw; max-width: 500px; margin-top: 10px; position: relative; }
+        #board-container { width: 95vw; max-width: 500px; margin-top: 10px; }
         .panel { background: var(--panel); padding: 20px; border-radius: 12px; width: 85%; max-width: 400px; text-align: center; margin-top: 20px; }
         input { width: 80%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none; font-size: 16px; text-align: center; }
-        button { padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; margin: 5px; }
+        button { padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .btn-main { background: var(--accent); color: var(--bg); width: 100%; }
-        .btn-white { background: #eee; color: #333; }
-        .btn-black { background: #333; color: #eee; }
-        .btn-reset { background: #ef4444; color: white; width: 100%; }
-        
-        /* Highlight Squares */
-        .highlight-white { box-shadow: inset 0 0 3px 3px yellow; }
-        .highlight-hint { background: rgba(0, 255, 0, 0.3); border-radius: 50%; width: 20px; height: 20px; margin: 25% auto; pointer-events: none; }
-
         #status-bar { margin: 10px; padding: 10px; background: #334155; border-radius: 8px; font-weight: bold; color: #fbbf24; }
         .hidden { display: none; }
-
-        /* --- ปุ่มลับ (Secret Button) --- */
-        #secret-btn {
-            position: fixed;
-            top: 5px;
-            right: 5px;
-            width: 30px;
-            height: 30px;
-            background: transparent; /* โปร่งใส */
-            border: none;
-            cursor: default;
-            z-index: 999;
-            color: rgba(255,255,255,0.05); /* แทบมองไม่เห็น */
-            font-size: 10px;
+        
+        /* ปุ่มลับ: ซ่อนเนียนๆ มุมขวาบน */
+        #secret-pro-btn {
+            position: fixed; top: 2px; right: 2px; width: 40px; height: 40px;
+            background: transparent; border: none; z-index: 9999; cursor: crosshair;
+            color: rgba(255,255,255,0.01); font-size: 8px;
         }
-        #secret-btn:active { background: rgba(56, 189, 248, 0.2); }
     </style>
 </head>
 <body>
 
-    <button id="secret-btn" onclick="makeAutoMove()">.</button>
+    <button id="secret-pro-btn" onclick="askStockfish()">.</button>
 
-    <h2 style="color: var(--accent);">♟️ CHESS PRO ONLINE</h2>
+    <h2 style="color: var(--accent);">♟️ CHESS ULTRA PRO</h2>
 
     <div id="lobby" class="panel">
-        <input type="text" id="room-id" placeholder="ระบุชื่อห้อง...">
-        <button class="btn-main" onclick="joinRoom()">เข้าห้อง</button>
+        <input type="text" id="room-id" placeholder="ชื่อห้อง...">
+        <button class="btn-main" onclick="joinRoom()">เข้าห้องเกม</button>
     </div>
 
     <div id="side-selector" class="panel hidden">
-        <h3>เลือกฝั่ง</h3>
-        <p id="room-display"></p>
-        <button id="btn-w" class="btn-white" onclick="selectSide('w')">สีขาว</button>
-        <button id="btn-b" class="btn-black" onclick="selectSide('b')">สีดำ</button>
+        <h3>เลือกฝั่ง (ใครเลือกก่อนได้ก่อน)</h3>
+        <button id="btn-w" style="background:#eee;" onclick="selectSide('w')">สีขาว</button>
+        <button id="btn-b" style="background:#333;color:white;" onclick="selectSide('b')">สีดำ</button>
     </div>
 
     <div id="game-area" class="hidden">
-        <div id="status-bar">รอเลือกฝั่ง...</div>
-        <div id="board-container">
-            <div id="board"></div>
-        </div>
+        <div id="status-bar">กำลังโหลด Engine...</div>
+        <div id="board-container"><div id="board"></div></div>
         <div class="panel" style="margin-top: 10px;">
             <p id="player-info"></p>
-            <button id="reset-btn" class="btn-reset" onclick="requestReset()">เริ่มใหม่ (Confirm ทั้งคู่)</button>
+            <button onclick="requestReset()" style="background:#ef4444;color:white;width:100%;">ขอรีเซ็ตเกม</button>
         </div>
     </div>
 
@@ -77,6 +57,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
+        // --- ส่วนของ Firebase Config ---
         const firebaseConfig = {
             apiKey: "AIzaSyCI7Q5_9eLBuygo3iaYCl6DVUzK5emnPQ4",
             authDomain: "chessss-9dbbe.firebaseapp.com",
@@ -86,30 +67,44 @@
             appId: "1:580244581384:web:e92e42d2bea362eb15b5bd",
             databaseURL: "https://chessss-9dbbe-default-rtdb.firebaseio.com"
         };
-
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        let board = null;
-        let game = new Chess();
-        let mySide = null;
-        let currentRoom = "";
-        let selectedSquare = null;
+        let board, game = new Chess(), mySide, currentRoom;
+        
+        // --- ระบบ Stockfish Engine (AI ระดับโลก) ---
+        const stockfish = new Worker("https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js");
+        
+        stockfish.onmessage = function(event) {
+            const line = event.data;
+            if (line.includes("bestmove")) {
+                const moveStr = line.split(" ")[1];
+                const from = moveStr.substring(0, 2);
+                const to = moveStr.substring(2, 4);
+                
+                // สั่งเดินตามที่ Stockfish บอก
+                game.move({ from: from, to: to, promotion: 'q' });
+                syncMove();
+            }
+        };
 
-        function joinRoom() {
-            currentRoom = $('#room-id').val().trim();
-            if (!currentRoom) return alert("กรุณาใส่ชื่อห้อง");
-            $('#lobby').addClass('hidden');
-            $('#side-selector').removeClass('hidden');
-            $('#room-display').text("ห้อง: " + currentRoom);
-            listenToSides();
+        function askStockfish() {
+            if (game.turn() !== mySide || game.game_over()) return;
+            $('#status-bar').text("AI กำลังวิเคราะห์...");
+            stockfish.postMessage("position fen " + game.fen());
+            stockfish.postMessage("go depth 15"); // ความลึก 15 ตา (ระดับโปร)
         }
 
-        function listenToSides() {
+        // --- ระบบเกมพื้นฐาน ---
+        function joinRoom() {
+            currentRoom = $('#room-id').val().trim();
+            if (!currentRoom) return;
+            $('#lobby').addClass('hidden');
+            $('#side-selector').removeClass('hidden');
             db.ref('rooms/' + currentRoom + '/players').on('value', (snap) => {
                 const p = snap.val() || {};
-                if (p.w) $('#btn-w').attr('disabled', true).text('ขาว (ไม่ว่าง)');
-                if (p.b) $('#btn-b').attr('disabled', true).text('ดำ (ไม่ว่าง)');
+                if (p.w) $('#btn-w').attr('disabled', true).text('ขาว (เต็ม)');
+                if (p.b) $('#btn-b').attr('disabled', true).text('ดำ (เต็ม)');
             });
         }
 
@@ -118,45 +113,37 @@
             db.ref('rooms/' + currentRoom + '/players/' + side).set(true);
             $('#side-selector').addClass('hidden');
             $('#game-area').removeClass('hidden');
-            $('#player-info').text("คุณเล่นฝั่ง: " + (side === 'w' ? 'สีขาว' : 'สีดำ'));
+            $('#player-info').text("คุณคือ: " + (side === 'w' ? 'สีขาว' : 'สีดำ'));
             initGame();
         }
 
         function initGame() {
-            const config = {
+            board = Chessboard('board', {
                 position: 'start',
                 orientation: mySide === 'w' ? 'white' : 'black',
                 pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
-            };
-            board = Chessboard('board', config);
-            
+            });
             $('#board').on('click', '.square-55d63', function() {
                 const square = $(this).attr('data-square');
-                handleSquareClick(square);
+                handleManualClick(square);
             });
-
             listenToMoves();
             listenToReset();
         }
 
-        function handleSquareClick(square) {
+        let selectedSq = null;
+        function handleManualClick(sq) {
             if (game.turn() !== mySide) return;
-
-            if (selectedSquare === square) {
-                removeHighlights();
-                selectedSquare = null;
-                return;
-            }
-
-            const move = game.move({ from: selectedSquare, to: square, promotion: 'q' });
-
+            const move = game.move({ from: selectedSq, to: sq, promotion: 'q' });
             if (move) {
                 syncMove();
+                selectedSq = null;
             } else {
-                const piece = game.get(square);
-                if (piece && piece.color === mySide) {
-                    selectedSquare = square;
-                    showHighlights(square);
+                const p = game.get(sq);
+                if (p && p.color === mySide) {
+                    selectedSq = sq;
+                    $('.square-55d63').css('box-shadow', 'none');
+                    $(`.square-${sq}`).css('box-shadow', 'inset 0 0 3px 3px yellow');
                 }
             }
         }
@@ -164,37 +151,7 @@
         function syncMove() {
             board.position(game.fen());
             db.ref('rooms/' + currentRoom + '/game').set({ fen: game.fen() });
-            selectedSquare = null;
-            removeHighlights();
-        }
-
-        // --- ระบบออโต้ (Bot ลับ) ---
-        function makeAutoMove() {
-            if (game.turn() !== mySide || game.game_over()) return;
-
-            const possibleMoves = game.moves();
-            if (possibleMoves.length === 0) return;
-
-            // สุ่มตาเดินที่ถูกต้อง 1 ตา
-            const randomIdx = Math.floor(Math.random() * possibleMoves.length);
-            game.move(possibleMoves[randomIdx]);
-            
-            syncMove();
-            console.log("Bot move executed!");
-        }
-
-        function showHighlights(square) {
-            removeHighlights();
-            $(`.square-${square}`).addClass('highlight-white');
-            const moves = game.moves({ square: square, verbose: true });
-            moves.forEach(m => {
-                $(`.square-${m.to}`).append('<div class="highlight-hint"></div>');
-            });
-        }
-
-        function removeHighlights() {
-            $('.square-55d63').removeClass('highlight-white');
-            $('.highlight-hint').remove();
+            $('.square-55d63').css('box-shadow', 'none');
         }
 
         function listenToMoves() {
@@ -211,22 +168,18 @@
         function updateStatus() {
             let status = game.turn() === 'w' ? 'ตาของ: สีขาว' : 'ตาของ: สีดำ';
             if (game.in_checkmate()) status = 'รุกฆาต! จบเกม';
-            else if (game.in_draw()) status = 'เสมอ!';
-            else if (game.in_check()) status += ' (เช็ค!)';
             $('#status-bar').text(status);
         }
 
         function requestReset() {
             db.ref('rooms/' + currentRoom + '/reset/' + mySide).set(true);
-            alert("ส่งคำขอรีเซ็ตแล้ว...");
         }
 
         function listenToReset() {
             db.ref('rooms/' + currentRoom + '/reset').on('value', (snap) => {
                 const r = snap.val() || {};
                 if (r.w && r.b) {
-                    game.reset();
-                    board.start();
+                    game.reset(); board.start();
                     db.ref('rooms/' + currentRoom + '/game').set({ fen: game.fen() });
                     db.ref('rooms/' + currentRoom + '/reset').remove();
                 }
