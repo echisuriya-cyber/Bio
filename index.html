@@ -3,70 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Chess Pro Online + Secret Bot</title>
+    <title>Chess Pro Online</title>
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     <style>
         :root { --bg: #0f172a; --panel: #1e293b; --accent: #38bdf8; --white: #f8fafc; }
         body { font-family: sans-serif; background: var(--bg); color: var(--white); margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        #board-container { width: 95vw; max-width: 500px; margin-top: 10px; position: relative; }
-        .panel { background: var(--panel); padding: 20px; border-radius: 12px; width: 85%; max-width: 400px; text-align: center; margin-top: 20px; }
-        input { width: 80%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none; font-size: 16px; text-align: center; }
-        button { padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; margin: 5px; }
-        .btn-main { background: var(--accent); color: var(--bg); width: 100%; }
-        .btn-white { background: #eee; color: #333; }
-        .btn-black { background: #333; color: #eee; }
-        .btn-reset { background: #ef4444; color: white; width: 100%; }
         
-        /* Highlight Squares */
+        #board { width: 95vw; max-width: 480px; margin-top: 10px; }
+        .panel { background: var(--panel); padding: 20px; border-radius: 12px; width: 85%; max-width: 400px; text-align: center; margin-top: 20px; }
+        
+        input { width: 80%; padding: 12px; margin: 10px 0; border-radius: 8px; border: none; text-align: center; font-size: 16px; }
+        button { padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 5px; }
+        
+        .btn-main { background: var(--accent); color: #0f172a; width: 100%; font-size: 16px; }
+        .btn-side { width: 45%; font-size: 16px; }
+        .btn-reset { background: #ef4444; color: white; width: 100%; margin-top: 15px; }
+        
+        #status { margin: 10px; padding: 12px; background: #334155; border-radius: 8px; font-weight: bold; color: #fbbf24; width: 85%; text-align: center; }
+        .hidden { display: none !important; }
+        
         .highlight-white { box-shadow: inset 0 0 3px 3px yellow; }
-        .highlight-hint { background: rgba(0, 255, 0, 0.3); border-radius: 50%; width: 20px; height: 20px; margin: 25% auto; pointer-events: none; }
-
-        #status-bar { margin: 10px; padding: 10px; background: #334155; border-radius: 8px; font-weight: bold; color: #fbbf24; }
-        .hidden { display: none; }
-
-        /* --- ปุ่มลับ (Secret Button) --- */
-        #secret-btn {
-            position: fixed;
-            top: 5px;
-            right: 5px;
-            width: 30px;
-            height: 30px;
-            background: transparent; /* โปร่งใส */
-            border: none;
-            cursor: default;
-            z-index: 999;
-            color: rgba(255,255,255,0.05); /* แทบมองไม่เห็น */
-            font-size: 10px;
-        }
-        #secret-btn:active { background: rgba(56, 189, 248, 0.2); }
+        .highlight-hint { background: rgba(0,255,0,0.4); border-radius: 50%; width: 20px; height: 20px; margin: 25% auto; pointer-events: none; }
     </style>
 </head>
 <body>
 
-    <button id="secret-btn" onclick="makeAutoMove()">.</button>
-
-    <h2 style="color: var(--accent);">♟️ CHESS PRO ONLINE</h2>
+    <h2 style="color: var(--accent); margin-top: 20px;">♟️ CHESS PRO ONLINE</h2>
 
     <div id="lobby" class="panel">
-        <input type="text" id="room-id" placeholder="ระบุชื่อห้อง...">
-        <button class="btn-main" onclick="joinRoom()">เข้าห้อง</button>
+        <input type="text" id="room-id" placeholder="ระบุชื่อห้องออนไลน์...">
+        <button class="btn-main" onclick="startOnline()">เข้าห้องออนไลน์</button>
+        <button class="btn-main" style="background: #10b981; margin-top: 10px;" onclick="startSingle()">เล่นกับบอท (Single)</button>
     </div>
 
     <div id="side-selector" class="panel hidden">
-        <h3>เลือกฝั่ง</h3>
-        <p id="room-display"></p>
-        <button id="btn-w" class="btn-white" onclick="selectSide('w')">สีขาว</button>
-        <button id="btn-b" class="btn-black" onclick="selectSide('b')">สีดำ</button>
+        <h3>เลือกฝั่งของคุณ</h3>
+        <button id="btn-w" class="btn-side" style="background:#eee; color:#333;" onclick="setSide('w')">สีขาว</button>
+        <button id="btn-b" class="btn-side" style="background:#333; color:#eee;" onclick="setSide('b')">สีดำ</button>
     </div>
 
-    <div id="game-area" class="hidden">
-        <div id="status-bar">รอเลือกฝั่ง...</div>
-        <div id="board-container">
-            <div id="board"></div>
-        </div>
-        <div class="panel" style="margin-top: 10px;">
-            <p id="player-info"></p>
-            <button id="reset-btn" class="btn-reset" onclick="requestReset()">เริ่มใหม่ (Confirm ทั้งคู่)</button>
+    <div id="game-area" class="hidden" style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+        <div id="status">เตรียมพร้อม...</div>
+        <div id="board"></div>
+        <div class="panel">
+            <p id="info-text"></p>
+            <button class="btn-reset" onclick="location.reload()">ออกเกม / เริ่มใหม่</button>
         </div>
     </div>
 
@@ -77,6 +58,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
+        // --- Firebase Config ---
         const firebaseConfig = {
             apiKey: "AIzaSyCI7Q5_9eLBuygo3iaYCl6DVUzK5emnPQ4",
             authDomain: "chessss-9dbbe.firebaseapp.com",
@@ -86,151 +68,124 @@
             appId: "1:580244581384:web:e92e42d2bea362eb15b5bd",
             databaseURL: "https://chessss-9dbbe-default-rtdb.firebaseio.com"
         };
-
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        let board = null;
-        let game = new Chess();
-        let mySide = null;
-        let currentRoom = "";
-        let selectedSquare = null;
+        let board, game = new Chess();
+        let mySide = 'w', currentRoom = "", isSingle = false, selected = null;
 
-        function joinRoom() {
+        // --- ระบบสลับหน้า ---
+        function startOnline() {
             currentRoom = $('#room-id').val().trim();
-            if (!currentRoom) return alert("กรุณาใส่ชื่อห้อง");
+            if(!currentRoom) return alert("กรุณาใส่ชื่อห้อง");
+            isSingle = false;
             $('#lobby').addClass('hidden');
             $('#side-selector').removeClass('hidden');
-            $('#room-display').text("ห้อง: " + currentRoom);
-            listenToSides();
-        }
-
-        function listenToSides() {
-            db.ref('rooms/' + currentRoom + '/players').on('value', (snap) => {
-                const p = snap.val() || {};
-                if (p.w) $('#btn-w').attr('disabled', true).text('ขาว (ไม่ว่าง)');
-                if (p.b) $('#btn-b').attr('disabled', true).text('ดำ (ไม่ว่าง)');
+            
+            // เช็คว่ามีคนจองสีหรือยัง
+            db.ref('rooms/'+currentRoom+'/p').on('value', s => {
+                const p = s.val() || {};
+                if(p.w) $('#btn-w').attr('disabled', true).text('ขาว (เต็ม)');
+                if(p.b) $('#btn-b').attr('disabled', true).text('ดำ (เต็ม)');
             });
         }
 
-        function selectSide(side) {
-            mySide = side;
-            db.ref('rooms/' + currentRoom + '/players/' + side).set(true);
-            $('#side-selector').addClass('hidden');
-            $('#game-area').removeClass('hidden');
-            $('#player-info').text("คุณเล่นฝั่ง: " + (side === 'w' ? 'สีขาว' : 'สีดำ'));
-            initGame();
+        function startSingle() {
+            isSingle = true;
+            $('#lobby').addClass('hidden');
+            $('#side-selector').removeClass('hidden');
         }
 
+        function setSide(s) {
+            mySide = s;
+            if(!isSingle) db.ref('rooms/'+currentRoom+'/p/'+s).set(true);
+            $('#side-selector').addClass('hidden');
+            $('#game-area').removeClass('hidden');
+            $('#info-text').text("ฝั่งของคุณ: " + (s==='w'?'สีขาว':'สีดำ'));
+            
+            setTimeout(initGame, 300);
+        }
+
+        // --- เริ่มเกม ---
         function initGame() {
-            const config = {
+            board = Chessboard('board', {
                 position: 'start',
                 orientation: mySide === 'w' ? 'white' : 'black',
                 pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
-            };
-            board = Chessboard('board', config);
-            
-            $('#board').on('click', '.square-55d63', function() {
-                const square = $(this).attr('data-square');
-                handleSquareClick(square);
             });
 
-            listenToMoves();
-            listenToReset();
+            $('#board').on('click', '.square-55d63', function() {
+                clickSquare($(this).attr('data-square'));
+            });
+
+            if(!isSingle) {
+                // ฟังเสียงเดินจาก Firebase
+                db.ref('rooms/'+currentRoom+'/game').on('value', s => {
+                    const d = s.val();
+                    if(d && d.fen) {
+                        game.load(d.fen);
+                        board.position(d.fen);
+                        updateStatus();
+                    }
+                });
+            }
+            updateStatus();
         }
 
-        function handleSquareClick(square) {
-            if (game.turn() !== mySide) return;
+        function clickSquare(sq) {
+            if(game.turn() !== mySide || game.game_over()) return;
 
-            if (selectedSquare === square) {
-                removeHighlights();
-                selectedSquare = null;
-                return;
-            }
+            let move = game.move({ from: selected, to: sq, promotion: 'q' });
 
-            const move = game.move({ from: selectedSquare, to: square, promotion: 'q' });
-
-            if (move) {
-                syncMove();
+            if(move) {
+                board.position(game.fen());
+                if(!isSingle) db.ref('rooms/'+currentRoom+'/game').set({ fen: game.fen() });
+                selected = null;
+                removeHighlight();
+                updateStatus();
+                if(isSingle) setTimeout(botMove, 500);
             } else {
-                const piece = game.get(square);
-                if (piece && piece.color === mySide) {
-                    selectedSquare = square;
-                    showHighlights(square);
+                let p = game.get(sq);
+                if(p && p.color === mySide) {
+                    selected = sq;
+                    showMoves(sq);
                 }
             }
         }
 
-        function syncMove() {
-            board.position(game.fen());
-            db.ref('rooms/' + currentRoom + '/game').set({ fen: game.fen() });
-            selectedSquare = null;
-            removeHighlights();
-        }
-
-        // --- ระบบออโต้ (Bot ลับ) ---
-        function makeAutoMove() {
-            if (game.turn() !== mySide || game.game_over()) return;
-
-            const possibleMoves = game.moves();
-            if (possibleMoves.length === 0) return;
-
-            // สุ่มตาเดินที่ถูกต้อง 1 ตา
-            const randomIdx = Math.floor(Math.random() * possibleMoves.length);
-            game.move(possibleMoves[randomIdx]);
-            
-            syncMove();
-            console.log("Bot move executed!");
-        }
-
-        function showHighlights(square) {
-            removeHighlights();
-            $(`.square-${square}`).addClass('highlight-white');
-            const moves = game.moves({ square: square, verbose: true });
-            moves.forEach(m => {
+        function showMoves(sq) {
+            removeHighlight();
+            $(`.square-${sq}`).addClass('highlight-white');
+            game.moves({square:sq, verbose:true}).forEach(m => {
                 $(`.square-${m.to}`).append('<div class="highlight-hint"></div>');
             });
         }
 
-        function removeHighlights() {
+        function removeHighlight() {
             $('.square-55d63').removeClass('highlight-white');
             $('.highlight-hint').remove();
         }
 
-        function listenToMoves() {
-            db.ref('rooms/' + currentRoom + '/game').on('value', (snap) => {
-                const data = snap.val();
-                if (data && data.fen) {
-                    game.load(data.fen);
-                    board.position(data.fen);
-                    updateStatus();
-                }
+        function botMove() {
+            if(game.game_over()) return;
+            let moves = game.moves({verbose:true});
+            let best=null, bestScore=-999;
+            let val={p:1,n:3,b:3,r:5,q:9,k:100};
+            moves.forEach(m=>{
+                let score=Math.random();
+                if(m.captured) score+=val[m.captured]||0;
+                if(score>bestScore){bestScore=score;best=m;}
             });
+            game.move(best);
+            board.position(game.fen());
+            updateStatus();
         }
 
         function updateStatus() {
-            let status = game.turn() === 'w' ? 'ตาของ: สีขาว' : 'ตาของ: สีดำ';
-            if (game.in_checkmate()) status = 'รุกฆาต! จบเกม';
-            else if (game.in_draw()) status = 'เสมอ!';
-            else if (game.in_check()) status += ' (เช็ค!)';
-            $('#status-bar').text(status);
-        }
-
-        function requestReset() {
-            db.ref('rooms/' + currentRoom + '/reset/' + mySide).set(true);
-            alert("ส่งคำขอรีเซ็ตแล้ว...");
-        }
-
-        function listenToReset() {
-            db.ref('rooms/' + currentRoom + '/reset').on('value', (snap) => {
-                const r = snap.val() || {};
-                if (r.w && r.b) {
-                    game.reset();
-                    board.start();
-                    db.ref('rooms/' + currentRoom + '/game').set({ fen: game.fen() });
-                    db.ref('rooms/' + currentRoom + '/reset').remove();
-                }
-            });
+            let t = game.turn()==='w' ? 'ตาของ: สีขาว' : 'ตาของ: สีดำ';
+            if(game.in_checkmate()) t = 'รุกฆาต! จบเกม';
+            if(game.in_draw()) t = 'เสมอ!';
+            $('#status').text(t);
         }
     </script>
 </body>
